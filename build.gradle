@@ -20,6 +20,8 @@ dependencies {
 	implementation group: 'it.tdlight', name: 'tdlight-java' // Java 8 is supported if you use the following dependency classifier: `jdk8`
 	implementation group: 'it.tdlight', name: 'tdlight-natives', classifier: 'linux_amd64_gnu_ssl1'
 	// Include other native classifiers, for example linux_amd64_gnu_ssl3,  linux_amd64_clang_ssl3, macos_amd64, macos_arm64, linux_armhf_gnu_ssl3, ... -->
+    implementation group: 'com.google.code.gson', name: 'gson', version: '2.12.1'
+    implementation 'org.telegram:telegrambots:6.9.7.1'
 }
 
 test {

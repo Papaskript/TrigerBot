@@ -40,3 +40,9 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+.aider*
+
+credentials.json
+/config.json
+
+userbot-session-*
