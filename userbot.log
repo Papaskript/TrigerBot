@@ -1,0 +1,32 @@
+Mar 14, 2025 8:24:09 PM org.example.Main main
+INFO: Юзербот запущен и готов к работе. Ожидание входящих сообщений...
+Mar 14, 2025 8:24:09 PM org.example.Main$UserBotApp onAuthorizationState
+INFO: Получено обновление авторизации: AuthorizationStateWaitTdlibParameters
+Mar 14, 2025 8:24:10 PM org.example.Main$UserBotApp onAuthorizationState
+INFO: Получено обновление авторизации: AuthorizationStateWaitPhoneNumber
+Mar 14, 2025 8:24:14 PM org.example.Main$UserBotApp onAuthorizationState
+INFO: Получено обновление авторизации: AuthorizationStateWaitCode
+Mar 14, 2025 8:27:39 PM org.example.Main main
+INFO: Юзербот запущен и готов к работе. Ожидание входящих сообщений...
+Mar 14, 2025 8:27:39 PM org.example.Main$UserBotApp onAuthorizationState
+INFO: Получено обновление авторизации: AuthorizationStateWaitTdlibParameters
+Mar 14, 2025 8:27:41 PM org.example.Main$UserBotApp onAuthorizationState
+INFO: Получено обновление авторизации: AuthorizationStateWaitPhoneNumber
+Mar 14, 2025 8:28:11 PM org.example.Main$UserBotApp onAuthorizationState
+INFO: Получено обновление авторизации: AuthorizationStateWaitCode
+Mar 14, 2025 8:28:26 PM org.example.Main$UserBotApp onAuthorizationState
+INFO: Получено обновление авторизации: AuthorizationStateWaitPassword
+Mar 14, 2025 8:28:47 PM org.example.Main main
+INFO: Юзербот запущен и готов к работе. Ожидание входящих сообщений...
+Mar 14, 2025 8:28:47 PM org.example.Main$UserBotApp onAuthorizationState
+INFO: Получено обновление авторизации: AuthorizationStateWaitTdlibParameters
+Mar 14, 2025 8:28:47 PM org.example.Main$UserBotApp onAuthorizationState
+INFO: Получено обновление авторизации: AuthorizationStateWaitPassword
+Mar 14, 2025 8:29:09 PM org.example.Main$UserBotApp onAuthorizationState
+INFO: Авторизация успешно пройдена. Юзербот готов к работе.
+Mar 14, 2025 8:29:21 PM org.example.Main$UserBotApp lambda$onNewMessage$0
+INFO: Новое сообщение из чата "the_lenoz" (id 1047265886): ао
+Mar 14, 2025 8:29:25 PM org.example.Main$UserBotApp lambda$onNewMessage$0
+INFO: Новое сообщение из чата "the_lenoz" (id 1047265886): ичо
+Mar 14, 2025 8:29:26 PM org.example.Main$UserBotApp lambda$onNewMessage$0
+INFO: Новое сообщение из чата "the_lenoz" (id 1047265886): яьышв

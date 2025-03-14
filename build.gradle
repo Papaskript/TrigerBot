@@ -1,0 +1,27 @@
+plugins {
+    id 'java'
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+    maven { url "https://mvn.mchv.eu/repository/mchv/" }
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    // import the BOM
+	implementation platform('it.tdlight:tdlight-java-bom:3.4.0+td.1.8.26')
+
+	// do not specify the versions on the dependencies below!
+	implementation group: 'it.tdlight', name: 'tdlight-java' // Java 8 is supported if you use the following dependency classifier: `jdk8`
+	implementation group: 'it.tdlight', name: 'tdlight-natives', classifier: 'linux_amd64_gnu_ssl1'
+	// Include other native classifiers, for example linux_amd64_gnu_ssl3,  linux_amd64_clang_ssl3, macos_amd64, macos_arm64, linux_armhf_gnu_ssl3, ... -->
+}
+
+test {
+    useJUnitPlatform()
+}
