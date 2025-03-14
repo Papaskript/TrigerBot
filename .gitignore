@@ -46,3 +46,5 @@ credentials.json
 /config.json
 
 userbot-session-*
+/message_mapper.json
+/userbot.log.1
