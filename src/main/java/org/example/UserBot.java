@@ -10,9 +10,6 @@ import it.tdlight.client.SimpleTelegramClientBuilder;
 import it.tdlight.client.SimpleTelegramClientFactory;
 import it.tdlight.client.TDLibSettings;
 import it.tdlight.jni.TdApi;
-import it.tdlight.jni.TdApi.GetChat;
-import it.tdlight.jni.TdApi.MessageContent;
-import it.tdlight.jni.TdApi.MessageText;
 import it.tdlight.util.UnsupportedNativeLibraryException;
 
 import java.io.IOException;
@@ -20,6 +17,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
@@ -45,7 +44,7 @@ public class UserBot implements AutoCloseable {
      * @param phone  поставщик аутентификации (например, AuthenticationSupplier.consoleLogin())
      * @throws IOException            при ошибке настройки логирования
      */
-    public UserBot(int apiId, String apiHash, String phone) throws IOException, UnsupportedNativeLibraryException {
+    public UserBot(int apiId, String apiHash, String phone, Bot managerBot) throws IOException, UnsupportedNativeLibraryException {
         // Инициализация нативных библиотек и логирования TDLight
         Init.init();
         Log.setLogMessageHandler(1, new Slf4JLogMessageHandler());
@@ -76,8 +75,18 @@ public class UserBot implements AutoCloseable {
             }
         });
 
+        clientBuilder.addUpdateHandler(TdApi.UpdateAuthorizationState.class, update -> {
+            if (update.authorizationState instanceof TdApi.AuthorizationStateReady) {
+                managerBot.send_message("Юзербот " + phone + " авторизован!");
+            }
+        });
+
         // Создаём клиента, передавая данные аутентификации
         this.client = clientBuilder.build(authenticationSupplier);
+        ExecutorService blockingExecutor = Executors.newSingleThreadExecutor();
+
+        BotClientInteraction clientInteraction = new BotClientInteraction(blockingExecutor, client, managerBot);
+        client.setClientInteraction(clientInteraction);
     }
 
     /**

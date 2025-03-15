@@ -7,8 +7,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Класс MessageMapper хранит отображение между идентификаторами сообщений.
@@ -21,7 +20,7 @@ public class MessageMapper {
     private static final String DEFAULT_FILE_PATH = "message_mapper.json";
 
     // Отображение: ключ – исходный message_id, значение – привязанный message_id
-    private Map<Long, Long> mapping;
+    private Map<Long, AbstractMap.SimpleEntry<Long, Long>> mapping;
     private final Gson gson = new Gson();
     private final String filePath;
 
@@ -48,7 +47,7 @@ public class MessageMapper {
      * @param messageId исходный идентификатор сообщения
      * @return привязанный message_id или null, если привязка отсутствует
      */
-    public synchronized Long getMapping(Long messageId) {
+    public synchronized AbstractMap.SimpleEntry<Long, Long> getMapping(Long messageId) {
         return mapping.get(messageId);
     }
 
@@ -57,10 +56,11 @@ public class MessageMapper {
      * После изменения данные автоматически сохраняются в файл.
      *
      * @param messageId      исходный идентификатор сообщения
-     * @param boundMessageId привязанный идентификатор сообщения
+     * @param chatId привязанный идентификатор сообщения
      */
-    public synchronized void putMapping(Long messageId, Long boundMessageId) {
-        mapping.put(messageId, boundMessageId);
+    public synchronized void putMapping(Long messageId, Long userBotId, Long chatId) {
+        AbstractMap.SimpleEntry<Long, Long> bound = new AbstractMap.SimpleEntry<>(userBotId, chatId);
+        mapping.put(messageId, bound);
         saveToFile();
     }
 
@@ -81,9 +81,15 @@ public class MessageMapper {
      */
     private synchronized void saveToFile() {
         try (FileWriter writer = new FileWriter(filePath)) {
-            gson.toJson(mapping, writer);
+            Map<String, List<Long>> jsonCompatibleMap = new HashMap<>();
+            for (Map.Entry<Long, AbstractMap.SimpleEntry<Long, Long>> entry : mapping.entrySet()) {
+                jsonCompatibleMap.put(
+                    entry.getKey().toString(),
+                    Arrays.asList(entry.getValue().getKey(), entry.getValue().getValue())
+                );
+            }
+            gson.toJson(jsonCompatibleMap, writer);
         } catch (IOException e) {
-            // В реальном проекте можно заменить вывод стектрейса на логирование
             e.printStackTrace();
         }
     }
@@ -100,15 +106,34 @@ public class MessageMapper {
         }
         try (FileReader reader = new FileReader(file)) {
             Type type = new TypeToken<HashMap<Long, Long>>() {}.getType();
-            mapping = gson.fromJson(reader, type);
+            mapping = deserializeMap(reader);
             if (mapping == null) {
                 mapping = new HashMap<>();
             }
         } catch (IOException e) {
-            // В реальном проекте можно заменить вывод стектрейса на логирование
             e.printStackTrace();
             mapping = new HashMap<>();
         }
+    }
+
+    public static Map<Long, AbstractMap.SimpleEntry<Long, Long>> deserializeMap(FileReader json) {
+        // Создаем Gson
+        Gson gson = new Gson();
+
+        // Определяем тип данных Map<String, List<Long>>
+        Type type = new TypeToken<Map<String, List<Long>>>() {}.getType();
+        Map<String, List<Long>> jsonMap = gson.fromJson(json, type);
+
+        // Преобразуем обратно в Map<Long, SimpleEntry<Long, Long>>
+        Map<Long, AbstractMap.SimpleEntry<Long, Long>> resultMap = new HashMap<>();
+        for (Map.Entry<String, List<Long>> entry : jsonMap.entrySet()) {
+            Long key = Long.parseLong(entry.getKey());
+            List<Long> values = entry.getValue();
+            if (values.size() == 2) {
+                resultMap.put(key, new AbstractMap.SimpleEntry<>(values.get(0), values.get(1)));
+            }
+        }
+        return resultMap;
     }
 }
 

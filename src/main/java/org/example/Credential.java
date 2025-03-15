@@ -5,6 +5,12 @@ public class Credential {
     private String api_hash;
     private String phonenumber;
 
+    public Credential(int api_id, String api_hash, String phonenumber) {
+        this.api_id = api_id;
+        this.api_hash = api_hash;
+        this.phonenumber = phonenumber;
+    }
+
     public int getApi_id() {
         return api_id;
     }

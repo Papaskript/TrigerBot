@@ -14,17 +14,31 @@ import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.AbstractMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class ProgramFlow {
     private Bot bot;
-    private UserBot userBot;
+    private Map<Long, UserBot> userBots;
     private MessageMapper messageMapper;
     private ReverseMessageConverter reverseConverter;
+    private CredentialsService credentialsService;
 
-    public ProgramFlow() {
+    public ProgramFlow() throws TelegramApiException, IOException, UnsupportedNativeLibraryException {
         this.messageMapper = new MessageMapper();
+        this.userBots = new HashMap<>();
+
+        this.credentialsService = new CredentialsService();
+        this.registerBot();
+        for (Credential cred: this.credentialsService.getCredentials()) {
+                int apiId = cred.getApi_id();
+                String apiHash = cred.getApi_hash();
+                String phoneNumber = cred.getPhonenumber();
+                this.registerUserBot(apiId, apiHash, phoneNumber);
+            }
     }
 
     public void registerBot() throws TelegramApiException, IOException {
@@ -38,29 +52,15 @@ public class ProgramFlow {
         System.out.println("Bot started successfully.");
     }
 
-    public void registerUserBot() throws UnsupportedNativeLibraryException, IOException {
-        // Читаем JSON-файл credentials.json, который должен находиться в корне проекта
-        String json = new String(Files.readAllBytes(Paths.get("credentials.json")));
-        Gson gson = new Gson();
-        Type listType = new TypeToken<List<Credential>>() {}.getType();
-        List<Credential> credentials = gson.fromJson(json, listType);
+    public void registerUserBot(int apiId, String apiHash, String phoneNumber) throws UnsupportedNativeLibraryException, IOException {
 
-        if (credentials.isEmpty()) {
-            Main.logger.severe("Файл credentials.json не содержит ни одной записи.");
-            return;
-        }
-        // Выбираем первую запись из списка
-        Credential cred = credentials.get(0);
-        int apiId = cred.getApi_id();
-        String apiHash = cred.getApi_hash();
-        String phoneNumber = cred.getPhonenumber();
 
         // Создаем экземпляр UserBot с использованием полученных параметров
         try {
-            this.userBot = new UserBot(apiId, apiHash, phoneNumber);
+            this.userBots.put((long) apiId, new UserBot(apiId, apiHash, phoneNumber, this.bot));
 
             // Регистрируем обработчик входящих сообщений
-            this.userBot.addMessageHandler(update -> {
+            this.userBots.get((long) apiId).addMessageHandler(update -> {
                 TdApi.MessageContent content = update.message.content;
                 String text;
                 if (content instanceof TdApi.MessageText messageText) {
@@ -72,7 +72,7 @@ public class ProgramFlow {
                 int messageDate = update.message.date;
 
                 // Получаем информацию о чате
-                this.userBot.getClient().send(new TdApi.GetChat(chatId))
+                this.userBots.get((long) apiId).getClient().send(new TdApi.GetChat(chatId))
                     .thenComposeAsync(chat -> {
                         // Проверяем тип чата и игнорируем групповые чаты
                         if (chat.type instanceof TdApi.ChatTypeBasicGroup || chat.type instanceof TdApi.ChatTypeSupergroup) {
@@ -82,8 +82,8 @@ public class ProgramFlow {
                         // Получаем информацию об отправителе, если это пользователь
                         if (update.message.senderId instanceof TdApi.MessageSenderUser senderUser) {
                             long userId = senderUser.userId;
-                            if (senderUser.userId != this.userBot.getClient().getMe().id) {
-                                return userBot.getClient().send(new TdApi.GetUser(userId))
+                            if (senderUser.userId != this.userBots.get((long) apiId).getClient().getMe().id) {
+                                return this.userBots.get((long) apiId).getClient().send(new TdApi.GetUser(userId))
                                         .thenApply(user -> new Object[]{chat, user});
                             } else {
                                 return CompletableFuture.completedFuture(new Object[]{chat, null});
@@ -95,7 +95,7 @@ public class ProgramFlow {
                     .whenCompleteAsync((result, error) -> {
                         if (error != null) {
                             Main.logger.warning("Ошибка при получении информации о чате или пользователе: " + error);
-                        } else if (result != null && ((TdApi.User) result[1]).id != this.userBot.getClient().getMe().id) {
+                        } else if (result != null && ((TdApi.User) result[1]).id != this.userBots.get((long) apiId).getClient().getMe().id) {
                             TdApi.Chat chat = (TdApi.Chat) result[0];
                             TdApi.User user = (TdApi.User) result[1];
 
@@ -112,14 +112,12 @@ public class ProgramFlow {
                                 }
                             }
 
-                            // Логируем информацию о сообщении
-                            Bot.MessageData data = new Bot.MessageData();
-                            data.text = String.format("Cообщение от %s %s в %s:",
+
+                            String caption = String.format("New message from %s %s:\n",
                                 chat.title, senderInfo, formattedTime);
-                            this.messageMapper.putMapping(Long.valueOf(this.bot.send_message(data).getMessageId()), update.message.chatId);
                             try {
-                                Message sentMessage = this.bot.execute(MessageConverter.convertTdlightMessage(userBot.getClient(), update.message));
-                                this.messageMapper.putMapping(Long.valueOf(sentMessage.getMessageId()), update.message.chatId);
+                                Message sentMessage = this.bot.execute(MessageConverter.convertTdlightMessage(this.userBots.get((long) apiId).getClient(), update.message, caption));
+                                this.messageMapper.putMapping(Long.valueOf(sentMessage.getMessageId()), (long) apiId, update.message.chatId);
                             } catch (TelegramApiException e) {
                                 throw new RuntimeException(e);
                             }
@@ -128,7 +126,7 @@ public class ProgramFlow {
                             viewMessages.messageIds = new long[]{update.message.id};  // Можно передавать массив сообщений
                             viewMessages.forceRead = true;  // Принудительное чтение
 
-                            this.userBot.getClient().send(viewMessages, res -> {});
+                            this.userBots.get((long) apiId).getClient().send(viewMessages, res -> {});
                             }
                         });
                 });
@@ -147,28 +145,24 @@ public class ProgramFlow {
      *
      * @param message входящее сообщение с командой /add
      */
-    public void processAddCommand(Message message) {
-        String arguments = message.getText().replaceFirst("/add", "").trim();
-        String responseText = "Добавлено: " + arguments;
+    public void processAddCommand(Message message) throws UnsupportedNativeLibraryException, IOException {
+        String[] arguments = message.getText().replaceFirst("/add", "").trim().split("\\s+");
 
-        Bot.MessageData data = new Bot.MessageData();
-        data.text = responseText;
-        // Дополнительно можно установить photoUrl или voiceUrl, если требуется
-
-        this.bot.send_message(data);
+        Credential newUserCredential = new Credential(Integer.parseInt(arguments[0]), arguments[1], arguments[2]);
+        this.credentialsService.addCredential(newUserCredential);
+        this.registerUserBot(newUserCredential.getApi_id(), newUserCredential.getApi_hash(), newUserCredential.getPhonenumber());
+        this.bot.send_message("Добавление пользователя...");
     }
 
     public void handleReply(Message message) {
-        long chatId = this.messageMapper.getMapping(Long.valueOf(message.getReplyToMessage().getMessageId()));
-        TdApi.SendMessage tdSendMessage = reverseConverter.convertTelegramMessage(message);
+        AbstractMap.SimpleEntry<Long, Long> replyMap = this.messageMapper.getMapping(Long.valueOf(message.getReplyToMessage().getMessageId()));
+        long chatId = replyMap.getValue();
+        long apiId = replyMap.getKey();
+        TdApi.SendMessage tdSendMessage = reverseConverter.convertTelegramMessage(message, chatId);
         // Отправляем сообщение через TDLight клиент
-        this.userBot.getClient().send(tdSendMessage, result -> {
+        this.userBots.get((long) apiId).getClient().send(tdSendMessage, result -> {
             TdApi.Message sentMessage = result.get();
             System.out.println("Сообщение успешно отправлено. ID: " + sentMessage.id);
         });
-    }
-
-    public void applyAuthCode(int code) {
-
     }
 }

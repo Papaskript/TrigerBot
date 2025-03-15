@@ -1,5 +1,6 @@
 package org.example;
 
+import it.tdlight.util.UnsupportedNativeLibraryException;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -12,6 +13,9 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
+
 /**
  * Бот, реализующий базовую логику обработки входящих сообщений.
  * Метод onUpdateReceived делегирует обработку команды /add в Main.
@@ -20,6 +24,7 @@ public class Bot extends TelegramLongPollingBot {
     private final BotConfig config;
     private boolean waitingForCode = false;
     private ProgramFlow flow;
+    private CompletableFuture<String> codeFuture = new CompletableFuture<>();
 
     public Bot(BotConfig config, ProgramFlow flow) {
         this.config = config;
@@ -28,7 +33,7 @@ public class Bot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        if (update.hasMessage()) {
+        if (update.hasMessage() && update.getMessage().getChatId() == config.getAdminId()) {
             Message message = update.getMessage();
 
 
@@ -37,23 +42,27 @@ public class Bot extends TelegramLongPollingBot {
             } else {
                 String text = message.getText();
                 if (this.waitingForCode) {
-                    try {
-                        int code = Integer.parseInt(text);
-                        this.flow.applyAuthCode(code);
-                        this.waitingForCode = false;
-                    } catch (NumberFormatException ignored) {
-
-                    }
+                    this.codeFuture.complete(text);
+                    this.codeFuture = new CompletableFuture<>();
+                    this.waitingForCode = false;
                 }
 
                 // Если команда /add, делегируем обработку в ProgramFlow
                 else if (text.startsWith("/add")) {
-                    this.flow.processAddCommand(message);
-                    this.waitingForCode = true;
+                    try {
+                        this.flow.processAddCommand(message);
+                    } catch (UnsupportedNativeLibraryException | IOException e) {
+                        throw new RuntimeException(e);
                     }
+                }
 
             }
         }
+    }
+
+    public CompletableFuture<String> waitForCode() {
+        this.waitingForCode = true;
+        return this.codeFuture;
     }
 
     @Override
@@ -67,42 +76,18 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     /**
-     * Метод для отправки сообщений с опциональными параметрами.
-     * Если заданы несколько полей (text, photoUrl, voiceUrl), отправляются соответствующие сообщения.
-     *
-     * @param data   объект с данными сообщения
+     * Метод для отправки сообщений с опциональными параметрами
+     * @param text   объект с данными сообщения
      */
-    public Message send_message(MessageData data) {
+    public Message send_message(String text) {
         // Отправка текстового сообщения
-        if (data.text != null && !data.text.isEmpty()) {
+        if (text != null && !text.isEmpty()) {
             SendMessage sendMessage = SendMessage.builder()
                     .chatId(String.valueOf(this.config.getAdminId()))
-                    .text(data.text)
+                    .text(text)
                     .build();
             try {
                 return execute(sendMessage);
-            } catch (TelegramApiException e) {
-                e.printStackTrace();
-            }
-        }
-        // Отправка фото, если указан URL
-        if (data.photoUrl != null && !data.photoUrl.isEmpty()) {
-            SendPhoto sendPhoto = new SendPhoto();
-            sendPhoto.setChatId(String.valueOf(this.config.getAdminId()));
-            sendPhoto.setPhoto(new InputFile(data.photoUrl));
-            try {
-                return execute(sendPhoto);
-            } catch (TelegramApiException e) {
-                e.printStackTrace();
-            }
-        }
-        // Отправка голосового сообщения, если указан URL
-        if (data.voiceUrl != null && !data.voiceUrl.isEmpty()) {
-            SendVoice sendVoice = new SendVoice();
-            sendVoice.setChatId(String.valueOf(this.config.getAdminId()));
-            sendVoice.setVoice(new InputFile(data.voiceUrl));
-            try {
-                return execute(sendVoice);
             } catch (TelegramApiException e) {
                 e.printStackTrace();
             }

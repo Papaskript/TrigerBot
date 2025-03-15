@@ -1,8 +1,14 @@
 package org.example;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.List;
 import java.util.logging.Logger;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import it.tdlight.util.UnsupportedNativeLibraryException;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
@@ -12,18 +18,14 @@ public class Main {
 
 
     public static void main(String[] args) {
-        ProgramFlow flow = new ProgramFlow();
+        ProgramFlow flow = null;
         try {
-            flow.registerUserBot();
-
-            flow.registerBot();
+            flow = new ProgramFlow();
             Thread.currentThread().join();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (UnsupportedNativeLibraryException | InterruptedException | TelegramApiException e) {
+        } catch (TelegramApiException | UnsupportedNativeLibraryException | IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
+
     }
 
 

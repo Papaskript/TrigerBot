@@ -34,9 +34,9 @@ public class ReverseMessageConverter {
      * @param message сообщение из Telegram Bots API
      * @return объект TdApi.SendMessage, готовый для отправки через TDLight
      */
-    public TdApi.SendMessage convertTelegramMessage(Message message) {
+    public TdApi.SendMessage convertTelegramMessage(Message message, long chatId) {
         TdApi.SendMessage sendMessage = new TdApi.SendMessage();
-        sendMessage.chatId = message.getChatId();
+        sendMessage.chatId = chatId;
         sendMessage.options = new TdApi.MessageSendOptions();
 
         // Текстовое сообщение

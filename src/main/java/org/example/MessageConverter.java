@@ -29,7 +29,7 @@ public class MessageConverter {
      * @param tdMessage сообщение TDLight
      * @return объект BotApiMethod (например, SendMessage, SendPhoto, SendVoice и т.д.)
      */
-    public static PartialBotApiMethod<?> convertTdlightMessage(SimpleTelegramClient client, Message tdMessage) {
+    public static PartialBotApiMethod<?> convertTdlightMessage(SimpleTelegramClient client, Message tdMessage, String prefixCaption) {
         String chatId = String.valueOf(tdMessage.chatId);
         MessageContent content = tdMessage.content;
 
@@ -38,7 +38,7 @@ public class MessageConverter {
             MessageText textMessage = (MessageText) content;
             SendMessage sendMessage = new SendMessage();
             sendMessage.setChatId(chatId);
-            sendMessage.setText(textMessage.text.text);
+            sendMessage.setText(prefixCaption + textMessage.text.text);
             return sendMessage;
         }
         // Фотография
@@ -51,6 +51,7 @@ public class MessageConverter {
             SendPhoto sendPhoto = new SendPhoto();
             sendPhoto.setChatId(chatId);
             sendPhoto.setPhoto(new InputFile(new File(filePath)));
+            sendPhoto.setCaption(prefixCaption + photoMessage.caption.text);
             return sendPhoto;
         }
         // Голосовое сообщение
@@ -61,6 +62,7 @@ public class MessageConverter {
             SendVoice sendVoice = new SendVoice();
             sendVoice.setChatId(chatId);
             sendVoice.setVoice(new InputFile(new File(filePath)));
+            sendVoice.setCaption(prefixCaption + voiceMessage.caption.text);
             return sendVoice;
         }
         // Стикер
@@ -81,6 +83,7 @@ public class MessageConverter {
             SendAnimation sendAnimation = new SendAnimation();
             sendAnimation.setChatId(chatId);
             sendAnimation.setAnimation(new InputFile(new File(filePath)));
+            sendAnimation.setCaption(prefixCaption + animationMessage.caption.text);
             return sendAnimation;
         }
         // Если тип не поддерживается, возвращаем текстовое уведомление
