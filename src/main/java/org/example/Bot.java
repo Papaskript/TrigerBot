@@ -56,6 +56,10 @@ public class Bot extends TelegramLongPollingBot {
                     }
                 }
 
+                else if (text.startsWith("/start")) {
+                    //Здесь приветствие
+                }
+
             }
         }
     }
